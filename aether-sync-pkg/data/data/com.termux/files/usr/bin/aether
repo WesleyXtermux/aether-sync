@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# AETHER-SYNC v6.1.0 - DavidTX2000
+# AETHER-SYNC v6.2.0 - DavidTX2000
 
 SHADOW="/data/data/com.termux/files/usr/share/aether/shadow"
 BLUE="\033[1;34m"
@@ -12,14 +12,11 @@ get_free_space() {
     df -h /data | awk 'NR==2 {print $4}' | sed 's/G//' | cut -d. -f1
 }
 
-# Nova função de Injeção com Bypass de Link
 phantom_write() {
     local target="$SHADOW$1"
-    # Se o caminho for um link ou arquivo de sistema, removemos para criar um local editável
     [ -e "$target" ] || [ -L "$target" ] && rm -rf "$target"
     mkdir -p "$(dirname "$target")"
     touch "$target" 2>/dev/null
-    echo "Phantom created: $1"
 }
 
 morph() {
@@ -27,7 +24,8 @@ morph() {
     MODE="link"
 
     if [ "$FREE" -le 4 ]; then
-        echo -e "${YELLOW}Warning: Please do not delete the cache. Low storage detected ($FREE GB).${RESET}"
+        # Sua nova mensagem personalizada
+        echo -e "${YELLOW}Warning: Please do not delete the cache and data using aether --kill, as we are in the emulation process. Low storage detected ($FREE GB).${RESET}"
     else
         echo -e "${CYAN}Attention: Do you want to perform a full emulation? [Y]yes, [N]no:${RESET} "
         read -n 1 -r user_choice
@@ -49,8 +47,7 @@ morph() {
         fi
     done
 
-    # --- BREAKING SYSTEM RESTRICTIONS ---
-    # Agora forçamos a criação de arquivos reais onde o sistema bloqueava
+    # Re-aplicando o Bypass de Escrita
     phantom_write "/product/build.prop"
     phantom_write "/proc/cpuinfo"
     phantom_write "/data/data/com.whatsapp/databases/msgstore.db"
@@ -72,6 +69,6 @@ OP
 
 case "$1" in
     --morph) morph ;;
-    --kill) rm -rf "$SHADOW"/* ;;
+    --kill) rm -rf "$SHADOW"/* && echo "Shadow data wiped." ;;
     *) echo "Usage: aether [--morph|--kill]" ;;
 esac
