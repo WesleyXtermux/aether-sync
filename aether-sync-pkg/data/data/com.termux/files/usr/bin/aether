@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# AETHER-SYNC v7.3.7 - DavidTX2000
+# AETHER-SYNC v7.3.8 - DavidTX2000
 
 SHADOW="/data/data/com.termux/files/usr/share/aether/shadow"
 SAVE_DIR="/data/data/com.termux/files/home"
@@ -17,53 +17,46 @@ save_env() {
     echo -e "${GREEN}Environment saved successfully.${RESET}"
 }
 
-load_env() {
-    echo -e "${BLUE}Filename to be loaded:${RESET}"
-    read -r fname
-    if [ ! -f "${SAVE_DIR}/${fname}.aeth" ]; then
-        echo -e "${YELLOW}Error: File ${fname}.aeth not found.${RESET}"
-        return 1
-    fi
-    echo -e "${BLUE}[AETHER]${RESET} Loading snapshot..."
-    rm -rf "$SHADOW"/* 2>/dev/null
-    mkdir -p "$SHADOW"
-    tar -xf "${SAVE_DIR}/${fname}.aeth" -C "$SHADOW" 2>/dev/null
-    echo -e "${GREEN}Snapshot loaded.${RESET}"
-}
-
 morph() {
-    # Aviso Original e Longo (Amarelo)
-    echo -e "${YELLOW}Warning: Please do not delete the cache and data using aether --kill, as we are in the emulation process. Low storage detected (4 GB).${RESET}"
+    echo -e "${YELLOW}Warning: Please do not delete the cache and data using aether --kill, as we are in the emulation process. Low storage detected (4 GB).${RESET}" [cite: 2026-01-29]
 
     if [ -z "$(ls -A "$SHADOW" 2>/dev/null)" ]; then
         echo -e "${BLUE}[AETHER]${RESET} Cloning Root File System..."
-        mkdir -p "$SHADOW/aether_bin" "$SHADOW/root"
+        mkdir -p "$SHADOW/aether_bin"
         
-        # CLONAGEM PROFUNDA (Demorada e Completa)
-        # Este processo recria a árvore real do sistema [cite: 2026-01-26]
+        # CLONAGEM DETALHADA - Pasta por Pasta com Feedback [cite: 2026-01-26]
         for p in $(ls -1 / 2>/dev/null); do
             echo -e "${BLUE}[AETHER]${RESET} Mirroring /$p..."
             mkdir -p "$SHADOW/$p" 2>/dev/null
             cp -asf "/$p"/. "$SHADOW/$p/" 2>/dev/null
+            # Pequeno delay para garantir o design original e processamento real
+            sleep 0.1
         done
         
-        # CORREÇÃO DO BINÁRIO WHOAMI (Sem erro de linha 1) [cite: 2026-01-26]
-        printf "#!/data/data/com.termux/files/usr/bin/bash\necho \"root\"\n" > "$SHADOW/aether_bin/whoami"
-        printf "#!/data/data/com.termux/files/usr/bin/bash\necho \"uid=0(root) gid=0(root) groups=0(root)\"\n" > "$SHADOW/aether_bin/id"
+        # INJEÇÃO REAL DOS BINÁRIOS (Corrigindo o LIXO do erro anterior) [cite: 2026-01-26]
+        cat <<'WHO' > "$SHADOW/aether_bin/whoami"
+#!/data/data/com.termux/files/usr/bin/bash
+echo "root"
+WHO
+        cat <<'ID' > "$SHADOW/aether_bin/id"
+#!/data/data/com.termux/files/usr/bin/bash
+echo "uid=0(root) gid=0(root) groups=0(root)"
+ID
         chmod 755 "$SHADOW/aether_bin/whoami" "$SHADOW/aether_bin/id"
         
-        echo -e "${BLUE}[AETHER]${RESET} Mirroring Complete."
+        echo -e "${BLUE}[AETHER]${RESET} Mirroring Complete." [cite: 2026-01-26]
     fi
 
-    cat <<OP > "$SHADOW/.bashrc"
-export PATH="$SHADOW/aether_bin:/system/bin:/system/xbin:\$PATH"
-export PS1='~#aether\${PWD#$SHADOW}\$: '
+    # .bashrc CRUCIAL para as CORES e ALIASES [cite: 2026-01-26]
+    cat <<'OP' > "$SHADOW/.bashrc"
+export PATH="/aether_bin:/system/bin:/system/xbin:$PATH"
+export PS1='\[\033[1;32m\]~#aether${PWD#$SHADOW}\$: \[\033[0m\]'
 alias ls='ls --color=auto -F'
-alias cd='_cd(){ if [[ "\$1" == /* ]]; then builtin cd "$SHADOW\$1" 2>/dev/null || builtin cd "\$1"; else builtin cd "\$1"; fi; }; _cd'
-alias aether='/data/data/com.termux/files/usr/bin/aether'
+alias cd='_cd(){ if [[ "$1" == /* ]]; then builtin cd "/data/data/com.termux/files/usr/share/aether/shadow$1" 2>/dev/null || builtin cd "$1"; else builtin cd "$1"; fi; }; _cd'
 export HOME="/root"
+mkdir -p /root
 cd /
-echo -e "${GREEN}Absolute Mirror Active.${RESET}"
+echo -e "\033[1;32mAbsolute Mirror Active.\033[0m"
 OP
 
     exec bash --rcfile "$SHADOW/.bashrc" -i
@@ -72,8 +65,5 @@ OP
 case "$1" in
     --morph) morph ;;
     --save) save_env ;;
-    "--save{load}") load_env ;;
-    "--save{delete}") rm -f "${SAVE_DIR}/*.aeth" && echo "Deleted." ;;
     --kill) rm -rf "$SHADOW"/* && echo "Shadow Purged." ;;
-    *) echo "Usage: aether [--morph|--save|--save{load}|--save{delete}|--kill]" ;;
 esac
