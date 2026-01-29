@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# AETHER-SYNC v6.9.4 - DavidTX2000
+# AETHER-SYNC v6.9.5 - DavidTX2000
 
 SHADOW="/data/data/com.termux/files/usr/share/aether/shadow"
 YELLOW="\033[1;33m"
@@ -15,9 +15,12 @@ morph() {
 
     echo -e "${BLUE}[AETHER]${RESET} Cloning Root File System..."
     
-    mkdir -p "$SHADOW/system/bin" "$SHADOW/proc" "$SHADOW/product"
+    # Criando diretório de binários PRIORITÁRIOS (fora do caminho padrão do link)
+    mkdir -p "$SHADOW/aether_bin"
+    mkdir -p "$SHADOW/proc"
+    mkdir -p "$SHADOW/product"
 
-    ROOT_PATHS=("/acct" "/apex" "/bin" "/cache" "/config" "/data" "/dev" "/etc" "/mnt" "/odm" "/oem" "/sdcard" "/storage" "/sys" "/vendor")
+    ROOT_PATHS=("/acct" "/apex" "/bin" "/cache" "/config" "/data" "/dev" "/etc" "/mnt" "/odm" "/oem" "/sdcard" "/storage" "/sys" "/system" "/vendor")
     for p in "${ROOT_PATHS[@]}"; do
         if [ -d "$p" ]; then
             mkdir -p "$SHADOW$p"
@@ -26,25 +29,26 @@ morph() {
     done
 
     {
-        cat <<'INS' > "$SHADOW/system/bin/insmod"
+        # Injetando binários no diretório proprietário para evitar erro de Read-only
+        cat <<'INS' > "$SHADOW/aether_bin/insmod"
 #!/data/data/com.termux/files/usr/bin/bash
 if [ -z "$1" ]; then echo "Usage: insmod <module.ko>"; else echo "insmod: init_module '$1' failed (Exec format error)"; fi
 INS
-        cat <<'SET' > "$SHADOW/system/bin/setenforce"
+        cat <<'SET' > "$SHADOW/aether_bin/setenforce"
 #!/data/data/com.termux/files/usr/bin/bash
 echo "SELinux: Permissive mode set."
 SET
-        cat <<'WHO' > "$SHADOW/system/bin/whoami"
+        cat <<'WHO' > "$SHADOW/aether_bin/whoami"
 #!/data/data/com.termux/files/usr/bin/bash
 echo "root"
 WHO
-        chmod +x "$SHADOW/system/bin/insmod" "$SHADOW/system/bin/setenforce" "$SHADOW/system/bin/whoami"
-        touch "$SHADOW/proc/cpuinfo" "$SHADOW/product/build.prop"
+        chmod +x "$SHADOW/aether_bin"/*
     } 2>/dev/null
 
     cat <<OP > "$SHADOW/.bashrc"
 shopt -s nullglob
-export PATH="/system/bin:/system/xbin:$PATH"
+# Prioridade máxima para o diretório aether_bin
+export PATH="$SHADOW/aether_bin:/system/bin:/system/xbin:\$PATH"
 export PS1='~#aether\${PWD#$SHADOW}\$: '
 alias cd='_cd(){ if [[ "\$1" == /* ]]; then builtin cd "$SHADOW\$1" 2>/dev/null || builtin cd "\$1"; else builtin cd "\$1"; fi; }; _cd'
 alias ls='ls --color=auto -F'
