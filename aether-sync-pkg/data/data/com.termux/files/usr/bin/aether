@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# AETHER-SYNC v5.7.0 - Omni-Mirror (DavidTX2000)
+# AETHER-SYNC v5.8.0 - Breakout Edition (DavidTX2000)
 
 SHADOW="/data/data/com.termux/files/usr/share/aether/shadow"
 BLUE="\033[1;34m"
@@ -7,48 +7,55 @@ CYAN="\033[1;36m"
 GREEN="\033[1;32m"
 RESET="\033[0m"
 
-# Deep injection based on ZArchiver screenshots and system logs
-inject_phantom_structures() {
-    echo -e "${BLUE}[AETHER]${RESET} Injecting Phantom Subdirectories..."
+# Special function to force write access in restricted phantom paths
+safe_touch() {
+    local target_file="$SHADOW$1"
+    local dir_path=$(dirname "$target_file")
+    
+    # Se for um link, removemos o link para criar um diretório/arquivo real na Shadow
+    [ -L "$dir_path" ] && rm -rf "$dir_path"
+    mkdir -p "$dir_path"
+    
+    # Cria o arquivo fantasma real para permitir edição sem root
+    touch "$target_file" 2>/dev/null
+}
 
-    # 1. Simulating /data/data subfolders (Normally restricted)
-    local data_apps=("com.whatsapp" "com.android.vending" "com.google.android.gms" "com.android.chrome")
+inject_phantom_structures() {
+    echo -e "${BLUE}[AETHER]${RESET} Breaking restrictions & Injecting Phantoms..."
+
+    # 1. /data/data - Full Write Access
+    local data_apps=("com.whatsapp" "com.android.vending" "com.google.android.gms" "com.termux")
     for pkg in "${data_apps[@]}"; do
-        mkdir -p "$SHADOW/data/data/$pkg/"{databases,shared_prefs,cache,files,app_webview,lib}
+        mkdir -p "$SHADOW/data/data/$pkg/"{databases,shared_prefs,files}
         touch "$SHADOW/data/data/$pkg/databases/internal.db"
     done
 
-    # 2. Simulating /dev structure from your images
-    mkdir -p "$SHADOW/dev/"{block,binderfs,cpuctl,cpuset,fd,pts,socket,stune,usb-ffs}
-    touch "$SHADOW/dev/"{ashmem,binder,hwbinder,ion}
-
-    # 3. Simulating /proc structure
-    mkdir -p "$SHADOW/proc/"{net,scsi,self,sys,uid,uid_cputime,uid_io}
-    touch "$SHADOW/proc/"{cpuinfo,meminfo,mounts,stat}
-
-    # 4. Simulating /mnt and /product
-    mkdir -p "$SHADOW/mnt/"{androidwritable,appfuse,asec,expand,knox,media_rw,obb,runtime,user}
-    mkdir -p "$SHADOW/product/"{app,etc,lost+found,omc,priv-app}
-    touch "$SHADOW/product/build.prop"
+    # 2. /proc & /dev - Simulation (Not linking to avoid Permission Denied)
+    safe_touch "/proc/cpuinfo"
+    safe_touch "/proc/meminfo"
+    safe_touch "/proc/stat"
+    safe_touch "/dev/ion"
+    safe_touch "/dev/binder"
+    
+    # 3. /product - Custom Build Props
+    safe_touch "/product/build.prop"
 }
 
 morph() {
     echo -e "${BLUE}[AETHER]${RESET} Cloning Root File System..."
-    
-    # All base folders from your screenshots
     ROOT_PATHS=("/acct" "/apex" "/bin" "/cache" "/config" "/data" "/dev" "/etc" "/mnt" "/odm" "/oem" "/proc" "/product" "/sdcard" "/storage" "/sys" "/system" "/system_ext" "/vendor")
 
     for p in "${ROOT_PATHS[@]}"; do
         if [ -d "$p" ]; then
+            # Criamos a pasta base antes para evitar conflitos de link
             mkdir -p "$SHADOW$p"
-            # Creates links to existing files to stay within 3GB limit [cite: 2026-01-28]
+            # Linkamos apenas o conteúdo, permitindo sobrescrever pastas específicas depois
             cp -as "$p"/. "$SHADOW$p/" 2>/dev/null
         fi
     done
 
     inject_phantom_structures
 
-    # Finalizing Environment
     cat <<OP > "$SHADOW/.bashrc"
 shopt -s nullglob
 export PS1='~#aether\${PWD#$SHADOW}\$: '
@@ -57,7 +64,7 @@ alias ls='ls --color=auto -F'
 alias aether='/data/data/com.termux/files/usr/bin/aether'
 unset TERMUX_VERSION
 export PREFIX="/system"
-echo -e "${GREEN}Aether-Sync Global Environment Active.${RESET}"
+echo -e "${GREEN}Aether-Sync Ultra Environment Ready.${RESET}"
 OP
 
     echo -e "${BLUE}[AETHER]${RESET} Deep Mirror Complete. Storage Bypass Active."
@@ -79,7 +86,6 @@ dmeta_tool() {
         dbin=$(head /dev/urandom | tr -dc '01' | head -c 32)
     fi
 
-    # Auto-detect path for generation [cite: 2026-01-26]
     local target="$PWD/$dname.dmeta"
     
     cat <<MET > "$target"
