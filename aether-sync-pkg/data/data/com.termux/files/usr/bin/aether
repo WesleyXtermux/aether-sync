@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# AETHER-SYNC v5.6.0 - Beyond PRoot (DavidTX2000)
+# AETHER-SYNC v5.7.0 - Omni-Mirror (DavidTX2000)
 
 SHADOW="/data/data/com.termux/files/usr/share/aether/shadow"
 BLUE="\033[1;34m"
@@ -7,37 +7,48 @@ CYAN="\033[1;36m"
 GREEN="\033[1;32m"
 RESET="\033[0m"
 
-# Function to simulate restricted /data/data folders
-inject_phantom_data() {
-    local apps=(
-        "com.android.vending" "com.google.android.gms" "com.android.chrome"
-        "com.android.settings" "com.google.android.youtube" "com.whatsapp"
-        "com.facebook.katana" "com.android.systemui" "com.termux"
-    )
-    for pkg in "${apps[@]}"; do
-        mkdir -p "$SHADOW/data/data/$pkg/databases"
-        mkdir -p "$SHADOW/data/data/$pkg/shared_prefs"
-        mkdir -p "$SHADOW/data/data/$pkg/files"
-        # Creating dummy system files that apps/mods look for
-        touch "$SHADOW/data/data/$pkg/databases/local.db"
+# Deep injection based on ZArchiver screenshots and system logs
+inject_phantom_structures() {
+    echo -e "${BLUE}[AETHER]${RESET} Injecting Phantom Subdirectories..."
+
+    # 1. Simulating /data/data subfolders (Normally restricted)
+    local data_apps=("com.whatsapp" "com.android.vending" "com.google.android.gms" "com.android.chrome")
+    for pkg in "${data_apps[@]}"; do
+        mkdir -p "$SHADOW/data/data/$pkg/"{databases,shared_prefs,cache,files,app_webview,lib}
+        touch "$SHADOW/data/data/$pkg/databases/internal.db"
     done
+
+    # 2. Simulating /dev structure from your images
+    mkdir -p "$SHADOW/dev/"{block,binderfs,cpuctl,cpuset,fd,pts,socket,stune,usb-ffs}
+    touch "$SHADOW/dev/"{ashmem,binder,hwbinder,ion}
+
+    # 3. Simulating /proc structure
+    mkdir -p "$SHADOW/proc/"{net,scsi,self,sys,uid,uid_cputime,uid_io}
+    touch "$SHADOW/proc/"{cpuinfo,meminfo,mounts,stat}
+
+    # 4. Simulating /mnt and /product
+    mkdir -p "$SHADOW/mnt/"{androidwritable,appfuse,asec,expand,knox,media_rw,obb,runtime,user}
+    mkdir -p "$SHADOW/product/"{app,etc,lost+found,omc,priv-app}
+    touch "$SHADOW/product/build.prop"
 }
 
 morph() {
-    echo -e "${BLUE}[AETHER]${RESET} Initializing Deep Mirroring..."
-    PATHS=("/acct" "/apex" "/bin" "/cache" "/config" "/data" "/dev" "/etc" "/mnt" "/odm" "/oem" "/proc" "/product" "/sdcard" "/storage" "/sys" "/system" "/system_ext" "/vendor")
+    echo -e "${BLUE}[AETHER]${RESET} Cloning Root File System..."
+    
+    # All base folders from your screenshots
+    ROOT_PATHS=("/acct" "/apex" "/bin" "/cache" "/config" "/data" "/dev" "/etc" "/mnt" "/odm" "/oem" "/proc" "/product" "/sdcard" "/storage" "/sys" "/system" "/system_ext" "/vendor")
 
-    for p in "${PATHS[@]}"; do
+    for p in "${ROOT_PATHS[@]}"; do
         if [ -d "$p" ]; then
             mkdir -p "$SHADOW$p"
+            # Creates links to existing files to stay within 3GB limit [cite: 2026-01-28]
             cp -as "$p"/. "$SHADOW$p/" 2>/dev/null
         fi
     done
 
-    echo -e "${BLUE}[AETHER]${RESET} Injecting Phantom /data/data (Bypassing Restrictions)..."
-    inject_phantom_data
+    inject_phantom_structures
 
-    # .bashrc setup for classic UI and command persistence
+    # Finalizing Environment
     cat <<OP > "$SHADOW/.bashrc"
 shopt -s nullglob
 export PS1='~#aether\${PWD#$SHADOW}\$: '
@@ -46,46 +57,47 @@ alias ls='ls --color=auto -F'
 alias aether='/data/data/com.termux/files/usr/bin/aether'
 unset TERMUX_VERSION
 export PREFIX="/system"
-echo -e "${GREEN}Aether-Sync Ultra Environment Ready.${RESET}"
+echo -e "${GREEN}Aether-Sync Global Environment Active.${RESET}"
 OP
 
+    echo -e "${BLUE}[AETHER]${RESET} Deep Mirror Complete. Storage Bypass Active."
     cd "$SHADOW"
     exec bash --rcfile "$SHADOW/.bashrc" -i
 }
 
-# Implementation of your custom dmeta command [cite: 2026-01-26]
+# Advanced dmeta tool for DavidTX2000 [cite: 2026-01-26]
 dmeta_tool() {
-    echo -e "${CYAN}[AETHER DMETA GENERATOR]${RESET}"
+    echo -e "${CYAN}[DMETA GENERATOR]${RESET}"
     read -p "Type (apk/game/mod): " dtype
     read -p "Name: " dname
     read -p "Version: " dver
-    read -p "File size (kb): " dsize
+    read -p "File size: " dsize
     
-    # Generate random binary ID unless it's a mod [cite: 2026-01-26]
-    dbin="null"
+    local dbin="null"
     if [ "$dtype" != "mod" ]; then
-        dbin=$(head /dev/urandom | tr -dc '0-1' | head -c 32)
+        # Generating 32-bit random binary code [cite: 2026-01-26]
+        dbin=$(head /dev/urandom | tr -dc '01' | head -c 32)
     fi
 
-    local target_path="$PWD/$dname.dmeta"
+    # Auto-detect path for generation [cite: 2026-01-26]
+    local target="$PWD/$dname.dmeta"
     
-    cat <<MET > "$target_path"
+    cat <<MET > "$target"
 <dmeta-info>
  name="$dname"
  version="$dver"
  type="$dtype"
- size="${dsize}kb"
+ size="$dsize"
  date="$(date +%Y-%m-%d)"
  <validate-id="$dbin">
 </dmeta-info>
 MET
-    echo -e "${GREEN}File generated at: $target_path${RESET}"
+    echo -e "${GREEN}Dmeta file generated at: $target${RESET}"
 }
 
 case "$1" in
     --morph) morph ;;
     --dmeta) dmeta_tool ;;
-    --systems) [[ "$2" == "-status" ]] && echo "Status: Active (Emulated Root)" ;;
-    --kill) rm -rf "$SHADOW"/* ;;
-    *) echo "Usage: aether [--morph|--dmeta|--systems -status|--kill]" ;;
+    --kill) rm -rf "$SHADOW"/* && echo "Shadow Purged." ;;
+    *) echo "Usage: aether [--morph|--dmeta|--kill]" ;;
 esac
