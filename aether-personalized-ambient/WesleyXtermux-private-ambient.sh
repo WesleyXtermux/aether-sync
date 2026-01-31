@@ -1,4 +1,4 @@
-cat <<'EOF' > build.sh
+cat <<'EOF' > WesleyXtermux-private-ambient.sh
 #!/data/data/com.termux/files/usr/bin/bash
 # Ambient: Google Pixel 6 Forensic
 # Compatible: ARM64 / Android 12+
@@ -27,4 +27,4 @@ printf "ro.product.model=Pixel 6\nro.product.brand=google\nro.build.id=SD1A.2108
 
 echo -e "\033[1;32m[SUCCESS]\033[0m Pixel 6 Ambient ready in Shadow."
 EOF
-chmod +x build.sh
+chmod +x WesleyXtermux-private-ambient.sh
